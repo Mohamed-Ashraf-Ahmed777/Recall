@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recall</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --panel2: #182234;
+      --border: #253248;
+      --text: #e5edf8;
+      --muted: #8b9bb4;
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Segoe UI, sans-serif;
+      background: radial-gradient(circle at top right, #13213a, var(--bg) 55%);
+      color: var(--text);
+      margin: 0;
+      padding: 28px;
+    }
+    .wrap { max-width: 1140px; margin: auto; }
+    .top {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+    }
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px; margin-bottom: 22px;
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.9); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px;
+    }
+    .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .tabs {
+      display: flex; gap: 6px; background: var(--panel2);
+      padding: 4px; border-radius: 10px; margin-bottom: 14px;
+    }
+    .tab {
+      flex: 1; padding: 7px; border-radius: 8px; border: none;
+      background: transparent; color: var(--muted); font-weight: 700; cursor: pointer;
+    }
+    .tab.active { background: var(--accent); color: #05111d; }
+    input, textarea, select {
+      width: 100%; padding: 9px 11px; margin-bottom: 10px;
+      border-radius: 10px; border: 1px solid var(--border);
+      background: var(--panel2); color: var(--text); font-size: 13px;
+    }
+    textarea { min-height: 74px; resize: vertical; }
+    .btn {
+      padding: 8px 13px; border-radius: 10px; border: 1px solid transparent;
+      font-weight: 700; font-size: 12.5px; cursor: pointer;
+    }
+    .primary { width: 100%; background: var(--accent); color: #05121f; }
+    .ghost { background: var(--panel2); color: var(--text); border-color: var(--border); }
+    .ok { background: rgba(34, 197, 94, 0.16); color: #4ade80; border-color: rgba(34, 197, 94, 0.35); }
+    .danger { background: rgba(239, 68, 68, 0.16); color: #f87171; border-color: rgba(239, 68, 68, 0.35); }
+    .filters {
+      display: grid; grid-template-columns: 1fr 130px 130px 130px;
+      gap: 8px; margin-bottom: 14px;
+    }
+    @media (max-width: 760px) { .filters { grid-template-columns: 1fr 1fr; } }
+    .item {
+      background: var(--panel2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; margin-bottom: 10px;
+    }
+    .row { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge {
+      font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+      background: rgba(148, 163, 184, 0.14); color: #cbd5e1;
+    }
+    .badge.READY { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    .badge.PENDING { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+    .badge.FAILED { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+    .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; word-break: break-all; }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .chip {
+      font-size: 11px; padding: 2px 8px; border-radius: 8px;
+      background: rgba(56, 189, 248, 0.14); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.28);
+      cursor: pointer;
+    }
+    .actions {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1 style="margin:0">Recall</h1>
+        <div style="color:#8b9bb4;font-size:13px">Personal Knowledge Vault — Notes, Links, Files &amp; Tags</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ghost" onclick="refresh()">Refresh</button>
+        <a href="/docs"><button class="btn ghost">API Docs</button></a>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" data-t="note" onclick="setTab('note')">Note</button>
+          <button class="tab" data-t="link" onclick="setTab('link')">Link</button>
+          <button class="tab" data-t="file" onclick="setTab('file')">File</button>
+        </div>
+
+        <form id="f-note" onsubmit="saveNote(event)">
+          <input id="nt" placeholder="Note title" required />
+          <textarea id="nd" placeholder="Note content..."></textarea>
+          <input id="ns" placeholder="Source (optional)" />
+          <button class="btn primary" type="submit">Save Note</button>
+        </form>
+
+        <form id="f-link" style="display:none" onsubmit="saveLink(event)">
+          <input id="lu" placeholder="https://example.com" required />
+          <input id="lt" placeholder="Title (optional)" />
+          <textarea id="ld" placeholder="Description (optional)"></textarea>
+          <button class="btn primary" type="submit">Save Link</button>
+        </form>
+
+        <form id="f-file" style="display:none" onsubmit="saveFile(event)">
+          <input id="ff" type="file" required />
+          <input id="ft" placeholder="Title (optional)" />
+          <textarea id="fd" placeholder="Description (optional)"></textarea>
+          <button class="btn primary" type="submit">Upload File</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <input id="q" placeholder="Search..." oninput="loadItems()" />
+          <select id="ct" onchange="loadItems()">
+            <option value="">All Types</option>
+            <option value="note">note</option>
+            <option value="link">link</option>
+            <option value="file">file</option>
+            <option value="pdf">pdf</option>
+            <option value="image">image</option>
+          </select>
+          <select id="st" onchange="loadItems()">
+            <option value="">All Status</option>
+            <option value="READY">READY</option>
+            <option value="PENDING">PENDING</option>
+            <option value="FAILED">FAILED</option>
+          </select>
+          <input id="tg" placeholder="Tag..." oninput="loadItems()" />
+        </div>
+        <div id="items"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[c]));
+    }
+    function escJ(s) {
+      return String(s ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    }
+    function setTab(t) {
+      document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.t === t));
+      document.getElementById("f-note").style.display = t === "note" ? "block" : "none";
+      document.getElementById("f-link").style.display = t === "link" ? "block" : "none";
+      document.getElementById("f-file").style.display = t === "file" ? "block" : "none";
+    }
+    async function loadStats() {
+      const r = await fetch("/stats");
+      if (!r.ok) return;
+      const s = await r.json();
+      document.getElementById("stats").innerHTML = `
+        <div class="card"><div style="color:#8b9bb4;font-size:12px">TOTAL</div><div style="font-size:22px;font-weight:700">${s.total_items}</div></div>
+        <div class="card"><div style="color:#8b9bb4;font-size:12px">READY</div><div style="font-size:22px;font-weight:700;color:#4ade80">${s.by_status.READY ?? 0}</div></div>
+        <div class="card"><div style="color:#8b9bb4;font-size:12px">PENDING</div><div style="font-size:22px;font-weight:700;color:#fbbf24">${s.by_status.PENDING ?? 0}</div></div>
+        <div class="card"><div style="color:#8b9bb4;font-size:12px">FAILED</div><div style="font-size:22px;font-weight:700;color:#f87171">${s.by_status.FAILED ?? 0}</div></div>
+        <div class="card"><div style="color:#8b9bb4;font-size:12px">TAGS</div><div style="font-size:22px;font-weight:700;color:#7dd3fc">${s.total_tags}</div></div>
+      `;
+    }
+    async function loadItems() {
+      const p = new URLSearchParams();
+      const q = document.getElementById("q").value.trim();
+      const ct = document.getElementById("ct").value;
+      const st = document.getElementById("st").value;
+      const tg = document.getElementById("tg").value.trim();
+      if (q) p.set("q", q);
+      if (ct) p.set("content_type", ct);
+      if (st) p.set("status", st);
+      if (tg) p.set("tag", tg);
+      const items = await (await fetch("/items?" + p.toString())).json();
+      document.getElementById("items").innerHTML = items.length ? items.map(i => {
+        const tags = (i.tags || []).map(t => `<span class="chip" onclick="pickTag('${escJ(t.name)}')">#${esc(t.name)}</span>`).join("");
+        const extra = i.original_url ? `URL: ${esc(i.original_url)}` : (i.original_filename ? `File: ${esc(i.original_filename)} (${i.file_size || 0} B)` : "");
+        const err = i.processing_error ? `<div class="meta" style="color:#f87171">Error: ${esc(i.processing_error)}</div>` : "";
+        return `
+          <div class="item">
+            <div class="row">
+              <strong>${esc(i.title)}</strong>
+              <div class="badges">
+                <span class="badge">${esc(i.content_type)}</span>
+                <span class="badge ${esc(i.processing_status)}">${esc(i.processing_status)}</span>
+              </div>
+            </div>
+            ${i.description ? `<p style="margin:8px 0 0;color:#cbd5e1;font-size:13px;white-space:pre-wrap">${esc(i.description)}</p>` : ""}
+            ${extra ? `<div class="meta">${extra}</div>` : ""}
+            ${err}
+            ${tags ? `<div class="tags">${tags}</div>` : ""}
+            <div class="actions">
+              <button class="btn ok" onclick="proc(${i.id})">Process</button>
+              <button class="btn ghost" onclick="addTag(${i.id})">+ Tag</button>
+              <button class="btn ghost" onclick="renameItem(${i.id}, '${escJ(i.title)}')">Rename</button>
+              <button class="btn danger" onclick="delItem(${i.id})">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join("") : "<p style=\"color:#8b9bb4;font-size:13px\">No items found.</p>";
+    }
+    function pickTag(n) { document.getElementById("tg").value = n; loadItems(); }
+    async function saveNote(e) {
+      e.preventDefault();
+      await fetch("/items/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: document.getElementById("nt").value,
+          description: document.getElementById("nd").value || null,
+          source_name: document.getElementById("ns").value || null
+        })
+      });
+      e.target.reset(); refresh();
+    }
+    async function saveLink(e) {
+      e.preventDefault();
+      await fetch("/items/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: document.getElementById("lu").value,
+          title: document.getElementById("lt").value || null,
+          description: document.getElementById("ld").value || null
+        })
+      });
+      e.target.reset(); refresh();
+    }
+    async function saveFile(e) {
+      e.preventDefault();
+      const fi = document.getElementById("ff");
+      if (!fi.files.length) return;
+      const fd = new FormData();
+      fd.append("file", fi.files[0]);
+      if (document.getElementById("ft").value) fd.append("title", document.getElementById("ft").value);
+      if (document.getElementById("fd").value) fd.append("description", document.getElementById("fd").value);
+      await fetch("/items/files", { method: "POST", body: fd });
+      e.target.reset(); refresh();
+    }
+    async function proc(id) { await fetch(`/items/${id}/process`, { method: "POST" }); refresh(); }
+    async function addTag(id) {
+      const raw = prompt("Tags separated by comma:");
+      if (!raw) return;
+      const tags = raw.split(",").map(s => s.trim()).filter(Boolean);
+      if (!tags.length) return;
+      await fetch(`/items/${id}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags })
+      });
+      refresh();
+    }
+    async function renameItem(id, cur) {
+      const next = prompt("New title:", cur);
+      if (!next || !next.trim()) return;
+      await fetch(`/items/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: next.trim() })
+      });
+      refresh();
+    }
+    async function delItem(id) { await fetch(`/items/${id}`, { method: "DELETE" }); refresh(); }
+    function refresh() { loadStats(); loadItems(); }
+    refresh();
+  </script>
+</body>
+</html>
